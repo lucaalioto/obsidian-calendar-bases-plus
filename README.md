@@ -1,57 +1,61 @@
-## Calendar Bases
+# Calendar Bases Plus
 
-<a href='https://ko-fi.com/W7W71T4JPP' target='_blank'><img height='36' style='border:0px;height:36px;' src='https://storage.ko-fi.com/cdn/kofi5.png?v=6' border='0' alt='Buy Me a Coffee at ko-fi.com' /></a>
+A fork of **[Calendar Bases](https://github.com/edrickleong/obsidian-calendar-bases)**
+by [Edrick Leong](https://github.com/edrickleong), adding the ability to create a
+note directly from a day on the calendar.
 
-![](./screenshot.png)
+All of the original plugin's work — the Bases calendar view itself, drag to
+reschedule, hover previews, the context menu — is his. This fork only adds note
+creation. Released under the same MIT licence; see `LICENSE`.
 
-Adds a calendar layout to [Obsidian Bases](https://help.obsidian.md/bases) so you can display notes with dates in an interactive calendar view.
+The upstream README is kept as `README.upstream.md`.
 
-Built with [FullCalendar](https://github.com/fullcalendar/fullcalendar) for a robust and feature-rich calendar experience.
+## What this fork adds
 
-- Dynamically display entries that match your filters on their respective dates.
-- Drag and drop events to reschedule them - automatically updates note frontmatter.
-- Navigate between months with intuitive controls.
-- Support for single-day and multi-day events (with optional end dates).
-- Click entries to open them or use context menus for more options.
+- A **+** on each day cell (always visible on touch devices, revealed on hover
+  on desktop) that creates a note dated to that day.
+- A popup for the note's name and properties, so you never leave the calendar.
+- Three view options under **New notes**:
+  - **Folder** — where new notes are created (native folder picker).
+  - **Name** — default note name; supports `{{date}}`.
+  - **Fields to prompt for** — properties to ask for, written as `name` or
+    `name=default`. A `true`/`false` default becomes a toggle; a property named
+    `tags` gets an autocomplete of tags already used in the vault, ordered by
+    how recently they were used.
+- Notes are written with frontmatter and an empty body, so template plugins
+  such as Templater still apply their folder templates.
 
-## Installation
+The **+** is hidden when the view's start date is not a writable `note.`
+property, since there would be nowhere to record the clicked date.
 
-This plugin requires Obsidian v1.10.0 or later to work.
+## Installing
 
-### Install via Community Plugins
+This is not in the community plugin store. Use
+[BRAT](https://github.com/TfTHacker/obsidian42-brat):
 
-Calendar Bases is available under Community Plugins. It can be found [here](obsidian://show-plugin?id=calendar-bases).
+1. Install BRAT from Community Plugins.
+2. BRAT → *Add a beta plugin* → this repository's URL.
+3. Enable **Calendar Bases Plus**.
 
-### Install via BRAT
+Do not run this alongside the original Calendar Bases — both register the
+`calendar` Bases view type.
 
-1. Install the [BRAT plugin](obsidian://show-plugin?id=obsidian42-brat) under Community Plugins.
-2. Open BRAT settings and click "Add beta plugin".
-3. Enter the URL of this repository: `https://github.com/edrickleong/obsidian-calendar-bases`.
-4. Under "Select a version", choose the Latest version.
-5. Click "Add plugin".
+Because the plugin id differs from `calendar-bases`, updating the original from
+the community store will not overwrite this one.
 
+## Building
 
-## Documentation
+Requires Node.
 
-### Date Properties
-
-To display entries on the calendar, configure a start date property in the view configuration menu. The property must contain a valid date string.
-
-```yaml
-# Date property examples
-startDate: 2025-10-15
-startDate: 2025-10-15T10:00:00
-
-# Optional end date for multi-day events
-endDate: 2025-10-18
+```
+npm install
+npm run build
 ```
 
-Any JavaScript-parseable date format is supported. For multi-day events, configure both a start date and an optional end date property.
+Outputs `main.js`; ship it with `manifest.json` and `styles.css`.
 
-## Credits
+## Upstream
 
-This plugin uses [FullCalendar](https://github.com/fullcalendar/fullcalendar).
-
-## License
-
-This project is licensed under the MIT License.
+The note-creation work is offered upstream at
+[issue #41](https://github.com/edrickleong/obsidian-calendar-bases/issues/41).
+If it lands there, this fork can be retired.
