@@ -7,11 +7,19 @@ import {
   Menu,
   parsePropertyId,
   QueryController,
+  Notice,
+  normalizePath,
+  TFolder,
 } from "obsidian";
 import React, { StrictMode } from "react";
 import { createRoot, Root } from "react-dom/client";
 import { CalendarHandle, CalendarReactView } from "./CalendarReactView";
 import { AppContext } from "./context";
+import {
+  CreateNoteModal,
+  CreateNoteResult,
+  parseFieldSpecs,
+} from "./CreateNoteModal";
 
 export const CalendarViewType = "calendar";
 
@@ -144,6 +152,11 @@ export class CalendarView extends BasesView {
             onEventDrop={(entry, newStart, newEnd) =>
               this.updateEntryDates(entry, newStart, newEnd)
             }
+            onDateCreate={
+              this.canCreateNotes()
+                ? (date) => this.createNoteOnDate(date)
+                : undefined
+            }
             editable={this.isEditable()}
             calendarHandleRef={this.calendarHandleRef}
           />
@@ -239,6 +252,133 @@ export class CalendarView extends BasesView {
     });
   }
 
+  /**
+   * Notes can only be created when the start date is a writable `note.`
+   * property - otherwise there is nowhere to record the date that was clicked.
+   */
+  private canCreateNotes(): boolean {
+    if (!this.startDateProp) return false;
+    return parsePropertyId(this.startDateProp).type === "note";
+  }
+
+  private static formatDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  }
+
+  /** Resolve the configured destination folder, falling back to Obsidian's default. */
+  private resolveNewNoteFolder(): TFolder {
+    const configured = (this.config.get("newNoteFolder") as string) || "";
+    if (configured) {
+      const folder = this.app.vault.getAbstractFileByPath(
+        normalizePath(configured),
+      );
+      if (folder instanceof TFolder) return folder;
+    }
+    return this.app.fileManager.getNewFileParent("");
+  }
+
+  /**
+   * Create a note dated to the clicked day and open it.
+   * Reuses the same `note.` property resolution as updateEntryDates().
+   */
+  /**
+   * Prompt for a name and tags, then create a note dated to the clicked day.
+   *
+   * The file is written with frontmatter and an EMPTY body on purpose: Templater
+   * only applies a folder template when the content after the frontmatter is
+   * empty, so a trailing blank line here would silently disable it.
+   */
+  private createNoteOnDate(date: Date): void {
+    if (!this.startDateProp) return;
+
+    const startPropName = this.startDateProp;
+    const startProp = startPropName.startsWith("note.")
+      ? startPropName.slice(5)
+      : null;
+    if (!startProp) {
+      new Notice("Calendar: start date must be a note property to create notes.");
+      return;
+    }
+
+    const dateStr = CalendarView.formatDate(date);
+    const template = ((this.config.get("newNoteName") as string) || "Untitled").trim();
+    const defaultName = template.replace(/\{\{date\}\}/g, dateStr) || "Untitled";
+    const dateLabel = date.toLocaleDateString(undefined, {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+    });
+
+    const specs = parseFieldSpecs(
+      this.config.get("newNoteFields") as string[] | undefined,
+    );
+
+    new CreateNoteModal(this.app, dateLabel, defaultName, specs, (result) => {
+      void this.writeNewNote(startProp, dateStr, result);
+    }).open();
+  }
+
+  private async writeNewNote(
+    startProp: string,
+    dateStr: string,
+    result: CreateNoteResult,
+  ): Promise<void> {
+    const folder = this.resolveNewNoteFolder();
+    const prefix = !folder.path || folder.path === "/" ? "" : `${folder.path}/`;
+    const baseName = result.name.replace(/[\/:*?"<>|]/g, "-") || "Untitled";
+
+    let filePath = `${prefix}${baseName}.md`;
+    let counter = 1;
+    while (this.app.vault.getAbstractFileByPath(filePath)) {
+      filePath = `${prefix}${baseName} ${counter}.md`;
+      counter++;
+    }
+
+    const lines = [`${startProp}: ${dateStr}`];
+    for (const field of result.fields) {
+      if (field.key === startProp) continue; // already written above
+
+      if (field.kind === "toggle") {
+        lines.push(`${field.key}: ${field.toggle}`);
+        continue;
+      }
+
+      if (field.kind === "tags") {
+        const tags = field.text
+          .split(",")
+          .map((tag) => tag.trim().replace(/^#/, ""))
+          .filter((tag) => tag.length > 0);
+        if (tags.length === 0) {
+          lines.push(`${field.key}:`);
+        } else {
+          lines.push(`${field.key}:`);
+          for (const tag of tags) lines.push(`  - ${tag}`);
+        }
+        continue;
+      }
+
+      const value = field.text.trim();
+      lines.push(value ? `${field.key}: ${value}` : `${field.key}:`);
+    }
+
+    // No trailing body - Templater only applies a folder template when the
+    // content after the frontmatter is empty.
+    const content = `---\n${lines.join("\n")}\n---\n`;
+
+    try {
+      const file = await this.app.vault.create(filePath, content);
+      if (result.open) {
+        await this.app.workspace.getLeaf(false).openFile(file);
+      }
+    } catch (error) {
+      console.error("Error creating note from calendar:", error);
+      new Notice("Calendar: could not create the note.");
+    }
+  }
+
   public setEphemeralState(state: unknown): void {
     // State management could be extended for React component
   }
@@ -285,6 +425,31 @@ export class CalendarView extends BasesView {
               friday: "Friday",
               saturday: "Saturday",
             },
+          },
+        ],
+      },
+      {
+        displayName: "New notes",
+        type: "group",
+        items: [
+          {
+            displayName: "Folder",
+            type: "folder",
+            key: "newNoteFolder",
+            placeholder: "Default location for new notes",
+          },
+          {
+            displayName: "Name",
+            type: "text",
+            key: "newNoteName",
+            default: "Untitled",
+            placeholder: "Untitled - supports {{date}}",
+          },
+          {
+            displayName: "Fields to prompt for",
+            type: "multitext",
+            key: "newNoteFields",
+            default: ["tags"],
           },
         ],
       },

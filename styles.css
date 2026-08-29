@@ -343,3 +343,49 @@ body {
   padding: 2px 0px;
 }
 
+
+/* --- Create note on a date -------------------------------------------- */
+
+.bases-calendar-daycell-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--size-2-2);
+  width: 100%;
+}
+
+.bases-calendar-daycell-number {
+  line-height: 1;
+}
+
+.bases-calendar-daycell-add {
+  all: unset;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-4-4);
+  height: var(--size-4-4);
+  border-radius: var(--radius-s);
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  line-height: 1;
+  opacity: 0;
+  transition: opacity 80ms ease-in-out;
+}
+
+/* Reveal on hover of the day cell, and keep it visible when focused
+   so the control remains reachable by keyboard. */
+.fc-daygrid-day:hover .bases-calendar-daycell-add,
+.bases-calendar-daycell-add:focus-visible {
+  opacity: 1;
+}
+
+.bases-calendar-daycell-add:hover {
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.bases-calendar-daycell-add:focus-visible {
+  box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+}
