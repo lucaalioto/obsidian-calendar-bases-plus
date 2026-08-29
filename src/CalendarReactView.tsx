@@ -3,6 +3,7 @@ import type {
   EventClickArg,
   EventContentArg,
   EventDropArg,
+  DayCellContentArg,
 } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -27,6 +28,7 @@ interface CalendarReactViewProps {
     newStart: Date,
     newEnd?: Date,
   ) => Promise<void>;
+  onDateCreate?: (date: Date) => void | Promise<void>;
   editable: boolean;
   calendarHandleRef?: React.RefObject<CalendarHandle | null>;
 }
@@ -38,6 +40,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
   onEntryClick,
   onEntryContextMenu,
   onEventDrop,
+  onDateCreate,
   editable,
   calendarHandleRef,
 }) => {
@@ -321,6 +324,35 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
     [properties, app, hasNonEmptyValue],
   );
 
+  // Render the day number alongside a "+" that creates a note on that date.
+  // The button is revealed on cell hover via CSS.
+  const renderDayCellContent = useCallback(
+    (arg: DayCellContentArg) => {
+      if (!onDateCreate) return <>{arg.dayNumberText}</>;
+
+      return (
+        <div className="bases-calendar-daycell-top">
+          <span className="bases-calendar-daycell-number">
+            {arg.dayNumberText}
+          </span>
+          <button
+            type="button"
+            className="bases-calendar-daycell-add"
+            aria-label="Create note on this date"
+            onClick={(evt) => {
+              evt.preventDefault();
+              evt.stopPropagation();
+              void onDateCreate(arg.date);
+            }}
+          >
+            +
+          </button>
+        </div>
+      );
+    },
+    [onDateCreate],
+  );
+
   return (
     <FullCalendar
       ref={calendarRef}
@@ -345,6 +377,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       fixedWeekCount={true}
       fixedMirrorParent={document.body ?? undefined}
       eventDurationEditable={false}
+      dayCellContent={renderDayCellContent}
       editable={editable}
     />
   );
