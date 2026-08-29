@@ -381,6 +381,14 @@ body {
   opacity: 1;
 }
 
+/* Touch devices have no hover state, so keep the control permanently
+   visible there - otherwise it can never be revealed. */
+@media (hover: none) {
+  .bases-calendar-daycell-add {
+    opacity: 1;
+  }
+}
+
 .bases-calendar-daycell-add:hover {
   background-color: var(--background-modifier-hover);
   color: var(--text-normal);
