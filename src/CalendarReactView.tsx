@@ -8,7 +8,13 @@ import type {
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import FullCalendar from "@fullcalendar/react";
-import { BasesEntry, BasesPropertyId, DateValue, Value } from "obsidian";
+import {
+  BasesEntry,
+  BasesPropertyId,
+  DateValue,
+  Value,
+  getAllTags,
+} from "obsidian";
 import React, { useCallback, useEffect, useRef } from "react";
 
 import { useApp } from "./hooks";
@@ -46,6 +52,23 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
 }) => {
   const app = useApp();
   const calendarRef = useRef<FullCalendar>(null);
+
+  // "#URPL237A" -> "cbp-tag-urpl237a"; nested tags keep their depth
+  // ("#work/admin" -> "cbp-tag-work-admin").
+  const tagClassNames = useCallback(
+    (entry: BasesEntry): string[] => {
+      const cache = app?.metadataCache.getFileCache(entry.file);
+      if (!cache) return [];
+      return (getAllTags(cache) ?? []).map(
+        (tag) =>
+          `cbp-tag-${tag
+            .slice(1)
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")}`,
+      );
+    },
+    [app],
+  );
   // Shared hover parent so Page Preview can manage popover lifecycle —
   // when a new popover opens, the old one on the same parent is dismissed.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -98,6 +121,10 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       start: calEntry.startDate,
       end: adjustedEndDate,
       allDay: true,
+      // One class per tag on the note, so a snippet can colour-code events
+      // (Obsidian renders tags inside a chip as <a class="tag"> with no
+      // attribute carrying the tag name, so CSS cannot target them there).
+      classNames: tagClassNames(calEntry.entry),
       extendedProps: {
         entry: calEntry.entry,
         originalEndDate: calEntry.endDate, // Keep track of original end date for drag operations

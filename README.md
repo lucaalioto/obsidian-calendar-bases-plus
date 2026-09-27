@@ -48,6 +48,22 @@ endDate: 2025-10-18
 
 Any JavaScript-parseable date format is supported. For multi-day events, configure both a start date and an optional end date property.
 
+### Colouring events by tag
+
+Every event carries one CSS class per tag on its note, so a snippet can colour-code the
+calendar. A tag becomes `cbp-tag-<tag>`, lowercased, with runs of non-alphanumerics turned
+into hyphens (`#URPL237A` → `cbp-tag-urpl237a`, `#work/admin` → `cbp-tag-work-admin`).
+
+```css
+body .fc-event.cbp-tag-urpl237a {
+  background-color: color-mix(in srgb, #e93147 18%, var(--background-secondary)) !important;
+  box-shadow: inset 2px 0 0 #e93147 !important;
+}
+```
+
+This exists because Obsidian renders a tag inside a Bases cell as `<a class="tag">` with no
+attribute holding the tag name, so CSS alone cannot target one specific tag there.
+
 ## Credits
 
 This plugin uses [FullCalendar](https://github.com/fullcalendar/fullcalendar).
