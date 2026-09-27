@@ -158,6 +158,7 @@ export class CalendarView extends BasesView {
                 : undefined
             }
             editable={this.isEditable()}
+            resizable={this.isEditable() && this.endDateProp !== null}
             calendarHandleRef={this.calendarHandleRef}
           />
         </AppContext.Provider>
@@ -245,9 +246,17 @@ export class CalendarView extends BasesView {
         return `${year}-${month}-${day}`;
       };
 
-      frontmatter[extractedStartProp] = formatDate(newStart);
+      const start = formatDate(newStart);
+      frontmatter[extractedStartProp] = start;
       if (this.endDateProp && newEnd && extractedEndProp) {
-        frontmatter[extractedEndProp] = formatDate(newEnd);
+        const end = formatDate(newEnd);
+        // Shrunk back to a single day: drop the end date rather than
+        // leave a redundant copy of the start date behind.
+        if (end === start) {
+          delete frontmatter[extractedEndProp];
+        } else {
+          frontmatter[extractedEndProp] = end;
+        }
       }
     });
   }

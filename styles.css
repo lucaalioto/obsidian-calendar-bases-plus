@@ -318,6 +318,33 @@ body {
   .fc-event-title-container {
     color: var(--text-normal) !important;
   }
+
+  /* ── resize handles ─────────────────────────────────────────────────────
+   *  Dragging either edge of an event spans it over more days. Widen the
+   *  hit area and draw a small grip on hover so the handle is findable.
+   */
+  .fc-h-event {
+    --fc-event-resizer-thickness: 10px;
+  }
+
+  .fc-h-event .fc-event-resizer::after {
+    content: "";
+    position: absolute;
+    top: 25%;
+    bottom: 25%;
+    left: 50%;
+    width: 3px;
+    transform: translateX(-50%);
+    border-radius: 2px;
+    background-color: var(--text-faint);
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+
+  .fc-h-event .fc-event-resizer:hover::after,
+  .fc-event-resizing .fc-event-resizer::after {
+    opacity: 1;
+  }
 }
 
 .bases-calendar-event-content {

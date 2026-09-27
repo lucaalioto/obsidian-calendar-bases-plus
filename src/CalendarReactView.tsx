@@ -6,7 +6,9 @@ import type {
   DayCellContentArg,
 } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin from "@fullcalendar/interaction";
+import interactionPlugin, {
+  type EventResizeDoneArg,
+} from "@fullcalendar/interaction";
 import FullCalendar from "@fullcalendar/react";
 import {
   BasesEntry,
@@ -36,6 +38,8 @@ interface CalendarReactViewProps {
   ) => Promise<void>;
   onDateCreate?: (date: Date) => void | Promise<void>;
   editable: boolean;
+  /** Edges can be dragged to span days - needs a writable end date property. */
+  resizable: boolean;
   calendarHandleRef?: React.RefObject<CalendarHandle | null>;
 }
 
@@ -48,6 +52,7 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
   onEventDrop,
   onDateCreate,
   editable,
+  resizable,
   calendarHandleRef,
 }) => {
   const app = useApp();
@@ -245,6 +250,41 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
     [onEventDrop],
   );
 
+  // Dragging either edge of an event changes its span. Unlike a drop, the
+  // end date is always written, even if the note had none before - that is
+  // what turns a single-day note into a multi-day one.
+  const handleEventResize = useCallback(
+    async (resizeInfo: EventResizeDoneArg) => {
+      if (!onEventDrop) {
+        resizeInfo.revert();
+        return;
+      }
+
+      const entry = resizeInfo.event.extendedProps.entry as BasesEntry;
+      const newStart = resizeInfo.event.start;
+      const newEnd = resizeInfo.event.end;
+
+      if (!newStart) {
+        resizeInfo.revert();
+        return;
+      }
+
+      // FullCalendar's all-day end is exclusive; convert back to inclusive
+      let actualEndDate = new Date(newStart);
+      if (newEnd) {
+        actualEndDate = new Date(newEnd);
+        actualEndDate.setDate(actualEndDate.getDate() - 1);
+      }
+
+      try {
+        await onEventDrop(entry, newStart, actualEndDate);
+      } catch {
+        resizeInfo.revert();
+      }
+    },
+    [onEventDrop],
+  );
+
   const hasNonEmptyValue = useCallback((value: Value): boolean => {
     if (!value || !value.isTruthy()) return false;
     const str = value.toString();
@@ -403,7 +443,9 @@ export const CalendarReactView: React.FC<CalendarReactViewProps> = ({
       height="auto"
       fixedWeekCount={true}
       fixedMirrorParent={document.body ?? undefined}
-      eventDurationEditable={false}
+      eventResize={(info) => void handleEventResize(info)}
+      eventDurationEditable={resizable}
+      eventResizableFromStart={resizable}
       dayCellContent={renderDayCellContent}
       editable={editable}
     />
